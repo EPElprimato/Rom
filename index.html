@@ -73,19 +73,9 @@
     </div>
 
     <script>
-        // Function to check if localStorage is supported
-        function isLocalStorageSupported() {
-            try {
-                localStorage.setItem('test', 'test');
-                localStorage.removeItem('test');
-                return true;
-            } catch (e) {
-                return false;
-            }
-        }
-
-        // Array to store records
-        var records = [];
+        var repoOwner = 'your-github-username';
+        var repoName = 'sss-plus-records';
+        var records = []; // Array to store records
 
         function login(event) {
             event.preventDefault();
@@ -114,7 +104,7 @@
             // Add record to local array
             records.push({ title: title, keyword: keyword, content: content });
 
-            // Save records to localStorage
+            // Save records to GitHub
             saveRecords();
 
             clearAddRecordForm();
@@ -133,15 +123,18 @@
             var list = document.getElementById('recordList');
             list.innerHTML = '';
 
-            if (localStorage.getItem('records')) {
-                records = JSON.parse(localStorage.getItem('records'));
-
-                records.forEach(function(record) {
-                    var li = document.createElement('li');
-                    li.innerHTML = '<h3>' + record.title + '</h3><p>' + record.content + '</p><p class="keyword">Keyword: ' + record.keyword + '</p>';
-                    list.appendChild(li);
-                });
-            }
+            // Load records from GitHub
+            fetch('https://raw.githubusercontent.com/' + repoOwner + '/' + repoName + '/main/records.json')
+                .then(response => response.json())
+                .then(data => {
+                    records = data;
+                    records.forEach(function(record) {
+                        var li = document.createElement('li');
+                        li.innerHTML = '<h3>' + record.title + '</h3><p>' + record.content + '</p><p class="keyword">Keyword: ' + record.keyword + '</p>';
+                        list.appendChild(li);
+                    });
+                })
+                .catch(error => console.error('Error loading records:', error));
         }
 
         function searchRecords() {
@@ -163,14 +156,25 @@
         }
 
         function saveRecords() {
-            if (isLocalStorageSupported()) {
-                localStorage.setItem('records', JSON.stringify(records));
-            } else {
-                alert('LocalStorage is not supported in your browser. Please use a different browser.');
-            }
+            // Save records to GitHub
+            fetch('https://api.github.com/repos/' + repoOwner + '/' + repoName + '/contents/records.json', {
+                method: 'PUT',
+                headers: {
+                    'Authorization': 'Bearer YOUR_GITHUB_TOKEN',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: 'Update records.json',
+                    content: btoa(JSON.stringify(records)),
+                    sha: 'sha_of_your_file' // You need to update this with the latest SHA of your file
+                })
+            })
+            .then(response => response.json())
+            .then(data => console.log('Records saved successfully:', data))
+            .catch(error => console.error('Error saving records:', error));
         }
 
-        // Load records from localStorage on page load
+        // Load records from GitHub on page load
         document.addEventListener('DOMContentLoaded', function() {
             loadRecords();
         });
